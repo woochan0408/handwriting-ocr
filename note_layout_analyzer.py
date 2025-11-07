@@ -389,7 +389,8 @@ class NoteLayoutAnalyzer:
         return saved_paths
 
     def visualize_layout(self, image: np.ndarray, regions: List[Dict],
-                        layout_type: LayoutType, extended_lines: Dict) -> np.ndarray:
+                        layout_type: LayoutType, extended_lines: Dict,
+                        boundary: Optional[np.ndarray] = None) -> np.ndarray:
         """
         레이아웃 시각화
 
@@ -398,6 +399,7 @@ class NoteLayoutAnalyzer:
             regions: 추출된 영역 리스트
             layout_type: 레이아웃 타입
             extended_lines: 연장된 중심선 정보
+            boundary: 경계 좌표 (옵션)
 
         Returns:
             시각화된 이미지
@@ -405,43 +407,39 @@ class NoteLayoutAnalyzer:
         vis_image = image.copy()
         h, w = image.shape[:2]
 
-        # 연장된 중심선 그리기 (굵은 빨간선)
-        v_line = extended_lines.get('vertical')
-        h_line = extended_lines.get('horizontal')
-
-        if v_line:
-            # 세로 중심선 - 빨간색
-            cv2.line(vis_image,
-                    (int(v_line['x']), int(v_line['y1'])),
-                    (int(v_line['x']), int(v_line['y2'])),
-                    (0, 0, 255), 3)
-
-        if h_line:
-            # 가로 중심선 - 빨간색
-            cv2.line(vis_image,
-                    (int(h_line['x1']), int(h_line['y'])),
-                    (int(h_line['x2']), int(h_line['y'])),
-                    (0, 0, 255), 3)
+        # 경계 내부 마스크 생성
+        boundary_mask = None
+        if boundary is not None and len(boundary) == 4:
+            boundary_mask = np.zeros((h, w), dtype=np.uint8)
+            cv2.fillPoly(boundary_mask, [boundary.astype(np.int32)], 255)
 
         # 각 영역에 다른 색상 오버레이 및 레이블
         colors = [(255, 100, 100), (100, 255, 100),
                  (100, 100, 255), (255, 255, 100)]
 
-        overlay = vis_image.copy()
+        # 오버레이용 이미지 생성
+        overlay = np.zeros_like(vis_image)
+
         for i, region in enumerate(regions):
             x, y = region["x"], region["y"]
             width, height = region["width"], region["height"]
 
-            # 반투명 색상 오버레이
+            # 각 영역에 색상 채우기
             color = colors[i % len(colors)]
-            cv2.rectangle(overlay, (x, y), (x + width, y + height),
-                         color, -1)
+            cv2.rectangle(overlay, (x, y), (x + width, y + height), color, -1)
 
-            # 영역 경계선
-            cv2.rectangle(vis_image, (x, y), (x + width, y + height),
-                         (0, 0, 255), 3)
+        # 경계 마스크가 있으면 마스크 내부만 적용
+        if boundary_mask is not None:
+            overlay = cv2.bitwise_and(overlay, overlay, mask=boundary_mask)
 
-            # 레이블 텍스트
+        # 반투명 효과 적용
+        vis_image = cv2.addWeighted(vis_image, 0.7, overlay, 0.3, 0)
+
+        # 레이블 텍스트 추가
+        for i, region in enumerate(regions):
+            x, y = region["x"], region["y"]
+            width, height = region["width"], region["height"]
+
             label = region.get("label", f"Region {i+1}")
             text_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX,
                                        0.7, 2)[0]
@@ -458,8 +456,27 @@ class NoteLayoutAnalyzer:
             cv2.putText(vis_image, label, (text_x, text_y),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
-        # 반투명 효과 적용
-        cv2.addWeighted(overlay, 0.3, vis_image, 0.7, 0, vis_image)
+        # 경계선 그리기 (노트 외곽선)
+        if boundary is not None and len(boundary) == 4:
+            cv2.polylines(vis_image, [boundary.astype(np.int32)], True, (0, 255, 0), 3)
+
+        # 연장된 중심선 그리기 (분할선)
+        v_line = extended_lines.get('vertical')
+        h_line = extended_lines.get('horizontal')
+
+        if v_line:
+            # 세로 중심선 - 빨간색
+            cv2.line(vis_image,
+                    (int(v_line['x']), int(v_line['y1'])),
+                    (int(v_line['x']), int(v_line['y2'])),
+                    (0, 0, 255), 3)
+
+        if h_line:
+            # 가로 중심선 - 빨간색
+            cv2.line(vis_image,
+                    (int(h_line['x1']), int(h_line['y'])),
+                    (int(h_line['x2']), int(h_line['y'])),
+                    (0, 0, 255), 3)
 
         # 레이아웃 타입 정보 추가
         info_text = f"Layout: {layout_type.value}"
@@ -526,8 +543,8 @@ class NoteLayoutAnalyzer:
         region_paths = self.save_regions(regions, f"{base_name}_{time_str}",
                                         os.path.join(output_dir, "regions"))
 
-        # 시각화 이미지 저장
-        vis_image = self.visualize_layout(image, regions, layout_type, extended_lines)
+        # 시각화 이미지 저장 (경계 정보 전달)
+        vis_image = self.visualize_layout(image, regions, layout_type, extended_lines, boundary_corners)
         vis_path = os.path.join(output_dir, f"{base_name}_{time_str}_layout_visualization.jpg")
         cv2.imwrite(vis_path, vis_image)
         print(f"  - 시각화 이미지: {vis_path}")
