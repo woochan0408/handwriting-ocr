@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 from pathlib import Path
 from typing import List, Tuple, Optional
+from datetime import datetime
 
 # 환경 변수 설정
 from dotenv import load_dotenv
@@ -166,6 +167,10 @@ class NoteBoundaryDetector:
         Returns:
             저장된 파일 경로
         """
+        # 현재 시간 가져오기 (시_분 형식)
+        now = datetime.now()
+        time_str = now.strftime("%H_%M")
+
         # 출력 디렉토리 생성
         os.makedirs(output_dir, exist_ok=True)
 
@@ -179,17 +184,18 @@ class NoteBoundaryDetector:
         # 경계 그리기
         result = self.draw_boundary(image, corners)
 
-        # 결과 저장
+        # 결과 저장 
         base_name = Path(image_path).stem
-        output_path = os.path.join(output_dir, f"{base_name}_boundary.jpg")
+        output_path = os.path.join(output_dir, f"{base_name}_{time_str}_boundary.jpg")
         cv2.imwrite(output_path, result)
 
         print(f"Result saved to: {output_path}")
 
         # 좌표 정보도 텍스트 파일로 저장
-        coords_path = os.path.join(output_dir, f"{base_name}_corners.txt")
+        coords_path = os.path.join(output_dir, f"{base_name}_{time_str}_corners.txt")
         with open(coords_path, 'w') as f:
             f.write(f"Image: {image_path}\n")
+            f.write(f"Time: {now.strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"Method: DocAligner\n")
             f.write("Corners (x, y):\n")
             for i, corner in enumerate(corners):
@@ -202,35 +208,39 @@ class NoteBoundaryDetector:
 
 def main():
     """메인 실행 함수"""
-    import argparse
+    # .env 파일에서 설정 읽기
+    image_dir = os.getenv('IMAGE_DIRECTORY', './test_images')
+    image_file = os.getenv('IMAGE_FILENAME', 'IMG_5588.JPG')
+    output_dir = os.getenv('OUTPUT_DIRECTORY', 'output')
 
-    parser = argparse.ArgumentParser(description="Detect note boundaries in images")
-    parser.add_argument("--input", type=str, help="Input image path")
-    parser.add_argument("--output", type=str, default="output",
-                       help="Output directory")
+    # 이미지 경로 생성
+    image_path = os.path.join(image_dir, image_file)
 
-    args = parser.parse_args()
+    # 파일 존재 확인
+    if not os.path.exists(image_path):
+        print(f"이미지 파일을 찾을 수 없습니다: {image_path}")
+        print(f"\n.env 파일을 확인하세요:")
+        print(f"  IMAGE_DIRECTORY={image_dir}")
+        print(f"  IMAGE_FILENAME={image_file}")
+        return
 
-    # 기본 테스트 이미지 설정
-    if not args.input:
-        # 환경변수에서 읽기
-        image_dir = os.getenv('IMAGE_DIRECTORY', './test_images')
-        image_file = os.getenv('IMAGE_FILENAME', 'IMG_5588.JPG')
-        args.input = os.path.join(image_dir, image_file)
-
-        if not os.path.exists(args.input):
-            print(f"Test image not found: {args.input}")
-            print("Please provide an image path with --input")
-            return
+    print("="*50)
+    print("노트 경계 검출 시작")
+    print("="*50)
+    print(f"입력 이미지: {image_path}")
+    print(f"출력 폴더: {output_dir}")
+    print("-"*50)
 
     # 검출기 생성
     detector = NoteBoundaryDetector()
 
     # 처리 및 저장
-    result_path = detector.process_and_save(args.input, args.output)
+    result_path = detector.process_and_save(image_path, output_dir)
 
     if result_path:
-        print(f"\nResult saved: {result_path}")
+        print("-"*50)
+        print(f"처리 완료!")
+        print(f"결과 파일: {result_path}")
 
 
 if __name__ == "__main__":
