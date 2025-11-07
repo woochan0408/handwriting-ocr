@@ -1,0 +1,100 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Claude
+.claude/
+
+# Project specific
+output/
+test_images/*.jpg
+test_images/*.jpeg
+test_images/*.png
+test_images/*.JPG
+test_images/*.JPEG
+test_images/*.PNG
+!test_images/.gitkeep
+
+# Model files
+*.onnx
+*.pth
+*.weights
+*.h5
+*.pkl
+*.joblib
+
+# Logs
+*.log
+logs/
+
+# Cache
+.cache/
+*.cache
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backup files
+*.bak
+*.backup
+*.tmp
+*.temp
+
+# Data files
+data/*.csv
+data/*.json
+!data/.gitkeep
+
+# Documentation build
+docs/_build/
+
+# Package files
+*.tar.gz
+*.zip
+*.rar
+
+# External repositories (if needed for development)
+external/
+libs/
+
+# Font files
+*.ttf
+
+# Keep important files
+!requirements.txt
+!README.md
+!README_*.md

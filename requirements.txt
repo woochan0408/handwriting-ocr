@@ -1,0 +1,11 @@
+# DocAligner 기반 노트 경계 검출
+docaligner-docsaid>=1.1.0
+capybara-docsaid>=0.5.1
+
+# 기본 이미지 처리
+opencv-python>=4.8.0
+numpy>=1.24.0
+Pillow>=10.0.0
+
+# 환경 변수
+python-dotenv>=0.19.0
